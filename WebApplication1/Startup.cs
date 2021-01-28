@@ -1,16 +1,11 @@
 using HotChocolate;
-using HotChocolate.Configuration;
 using HotChocolate.Execution;
 using HotChocolate.Execution.Configuration;
-using HotChocolate.Types.Descriptors;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
 using System.Collections.Generic;
 
 namespace WebApplication1
@@ -71,49 +66,24 @@ namespace WebApplication1
             }
         }
 
-        class Interceptor : ISchemaInterceptor
-        {
-            private readonly IHttpContextAccessor httpContextAccessor;
-
-            public Interceptor(IHttpContextAccessor httpContextAccessor)
-            {
-                this.httpContextAccessor = httpContextAccessor;
-            }
-            public void OnAfterCreate(IDescriptorContext context, ISchema schema)
-            {
-            }
-
-            public void OnBeforeCreate(IDescriptorContext context, ISchemaBuilder schemaBuilder)
-            {
-                // No idea how to get the name in a better way :( 
-                var name = (string)httpContextAccessor.HttpContext.GetRouteValue("app");
-
-                if (name == "bar")
-                {
-                    schemaBuilder.AddQueryType<QueryBar>();
-                }
-                else if (name == "foo")
-                {
-                    schemaBuilder.AddQueryType<QueryFoo>();
-                }
-            }
-
-            public void OnError(IDescriptorContext context, Exception exception)
-            {
-            }
-        }
-
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
             services.AddMvc();
             services.AddMemoryCache();
             services.AddHttpContextAccessor();
+#if DYNAMIC
             services.AddSingleton<ISchemaInterceptor, Interceptor>();
             services.AddSingleton<GraphQLService>();
             services.AddGraphQLServer();
             services.AddSingletonWrapper<IRequestExecutorResolver, CachingRequestExecutorResolver>();
             services.AddSingleton<IRequestExecutorOptionsMonitor, SimpleRequestExecutorOptionsMonitor>();
+#else
+            services.AddGraphQLServer("myFoo")
+                .AddQueryType<QueryFoo>();
+            services.AddGraphQLServer("myBar")
+                .AddQueryType<QueryBar>();
+#endif
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -128,6 +98,9 @@ namespace WebApplication1
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapGraphQL("/graphql/foo", "myFoo");
+                endpoints.MapGraphQL("/graphql/bar", "myBar");
             });
         }
     }
