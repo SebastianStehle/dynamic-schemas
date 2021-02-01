@@ -1,4 +1,7 @@
 using HotChocolate;
+using HotChocolate.Execution.Caching;
+using HotChocolate.Execution.Processing;
+using HotChocolate.Language;
 using HotChocolate.Resolvers;
 using HotChocolate.Types;
 using Microsoft.AspNetCore.Builder;
@@ -7,12 +10,37 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace WebApplication1
 {
     public partial class Startup
     {
+        class NoopCache : IDocumentCache, IPreparedOperationCache
+        {
+            public void TryAddDocument(string documentId, DocumentNode document)
+            {
+
+            }
+
+            public void TryAddOperation(string operationId, IPreparedOperation operation)
+            {
+            }
+
+            public bool TryGetDocument(string documentId, [NotNullWhen(true)] out DocumentNode document)
+            {
+                document = null;
+                return false;
+            }
+
+            public bool TryGetOperation(string operationId, [NotNullWhen(true)] out IPreparedOperation operation)
+            {
+                operation = null;
+                return false;
+            }
+        }
+
         public class Result
         {
             public string Value { get; set; }
@@ -148,13 +176,7 @@ namespace WebApplication1
             services.AddMvc();
             services.AddMemoryCache();
             services.AddHttpContextAccessor();
-#if DYNAMIC
-            services.AddSingleton<ISchemaInterceptor, Interceptor>();
-            services.AddSingleton<GraphQLService>();
-            services.AddGraphQLServer();
-            services.AddSingletonWrapper<IRequestExecutorResolver, CachingRequestExecutorResolver>();
-            services.AddSingleton<IRequestExecutorOptionsMonitor, SimpleRequestExecutorOptionsMonitor>();
-#else
+
             services.AddGraphQLServer("myFoo")
                 .AddQueryType<QueryFoo>();
             services.AddGraphQLServer("myBar")
@@ -163,7 +185,8 @@ namespace WebApplication1
                 .AddQueryType<QueryFooType>();
             services.AddGraphQLServer("myBarType")
                 .AddQueryType<QueryBarType>();
-#endif
+            // services.AddSingleton<IDocumentCache, NoopCache>();
+            services.AddSingleton<IPreparedOperationCache, NoopCache>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
