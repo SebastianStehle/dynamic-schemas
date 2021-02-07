@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using WebApplication1.TestSchema;
 
 namespace WebApplication1
 {
@@ -163,6 +164,8 @@ namespace WebApplication1
                 .AddQueryType<QueryFooType>();
             services.AddGraphQLServer("myBarType")
                 .AddQueryType<QueryBarType>();
+            services.AddGraphQLServer("dynamic")
+                .AddDynamicSchema();
 #endif
         }
 
@@ -179,6 +182,7 @@ namespace WebApplication1
             {
                 endpoints.MapControllers();
 
+                endpoints.MapGraphQL("/graphql/dynamic", "dynamic");
                 endpoints.MapGraphQL("/graphql/foo", "myFoo");
                 endpoints.MapGraphQL("/graphql/bar", "myBar");
                 endpoints.MapGraphQL("/graphql/fooType", "myFooType");
